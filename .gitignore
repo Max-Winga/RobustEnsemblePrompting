@@ -1,0 +1,13 @@
+# Ignore everything in the data directory
+/src/data/**/*
+# But do not ignore the data directory itself, or its subdirectories, or .gitkeep files
+!/src/data/
+!/src/data/**/
+!/src/data/**/.gitkeep
+
+# Ignore everything in the models directory
+/src/models/**/*
+# But do not ignore the data directory itself, or its subdirectories, or .gitkeep files
+!/src/models/
+!/src/models/**/
+!/src/models/**/.gitkeep
