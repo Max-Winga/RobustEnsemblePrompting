@@ -21,7 +21,7 @@ class ClassifierModel(nn.Module):
         nonlinearity (torch.nn.Module): The nonlinearity used in the model. Defaults to nn.ReLU().
         num_classes (int): The number of classes to predict. Defaults to 2.
     """
-    def __init__(self, channel_widths, linear_sizes, kernel, pooling, nonlinearity=nn.ReLU(), num_classes=2):
+    def __init__(self, channel_widths, linear_sizes, kernel, pooling, num_perturbations, nonlinearity=nn.ReLU(), num_classes=2):
         """Initializes the ClassifierModel.
 
         Args:
@@ -35,7 +35,8 @@ class ClassifierModel(nn.Module):
         """
         super(ClassifierModel, self).__init__()
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        
+        self.num_perturbations = num_perturbations
+
         self.channel_widths = channel_widths
         self.linear_sizes = linear_sizes
         self.kernel = kernel
@@ -87,12 +88,24 @@ class ClassifierModel(nn.Module):
             torch.Tensor: The output tensor.
         """
         x = x.to(self.device)
-        B = x.size(0)
+        B = x.size(0)  # batch size
+        P = x.size(1)  # number of perturbations
+        assert P == self.num_perturbations, f"Expected {self.num_perturbations} perturbations, got {P}"
+        
+        # Reshape the input tensor to (B * P, 1, 28, 28)
+        x = x.view(B * P, 1, 28, 28)
+        
         features = self.backbone(x)
         pooled_features = self.global_pooling(features)
-        pooled_features = pooled_features.view(B, -1)
+        pooled_features = pooled_features.view(B * P, -1)
         fc_output = self.fully_connected(pooled_features)
-        logits = self.linear(fc_output)
+        
+        # Reshape the output back to (B, P, num_classes)
+        logits = self.linear(fc_output).view(B, P, -1)
+        
+        # Average the logits across perturbations
+        logits = logits.mean(dim=1)
+        
         return logits
     
     def record_metrics(self, train_loss, train_acc, val_loss, val_acc):
@@ -251,115 +264,6 @@ class ClassifierModel(nn.Module):
         hours = (((self.training_time-seconds) / 60) - minutes) / 60
         print(f"Model trained for: {hours} hrs, {minutes} mins, {seconds} s")
         return self.training_time
-    
-    def test_with_thresholds(self, model, dataset, thresholds=np.arange(0.5, 1, 0.01)):
-        """Tests the model with various confidence thresholds.
-
-        Args:
-            model (torch.nn.Module): The model to test.
-            dataset (torch.utils.data.Dataset): The dataset to test the model on.
-            thresholds (array-like, optional): The confidence thresholds to test. Defaults to np.arange(0.5, 1, 0.01).
-
-        Returns:
-            list: A list of tuples, each containing a threshold, the test accuracy at that threshold, and the rejection ratio.
-        """
-        dataloader = torch.utils.data.DataLoader(dataset, batch_size=128)
-        model.eval()
-        
-        all_probs = []
-        all_targets = []
-        
-        with torch.no_grad():
-            for images, targets in dataloader:
-                images, targets = images.to(self.device), targets.to(self.device)
-                class_probs = torch.nn.functional.softmax(model(images), dim=1)
-                all_probs.extend(class_probs.tolist())
-                all_targets.extend(targets.tolist())
-
-        results = []
-        for threshold in thresholds:
-            correct_predictions = 0
-            total_predictions = 0
-            rejected_predictions = 0
-
-            for i in range(len(all_probs)):
-                max_prob = max(all_probs[i])
-                predicted_class = all_probs[i].index(max_prob)
-                if max_prob >= threshold:
-                    total_predictions += 1
-                    if predicted_class == all_targets[i]:
-                        correct_predictions += 1
-                else:
-                    rejected_predictions += 1
-
-            test_acc = correct_predictions / total_predictions if total_predictions > 0 else 0
-            rejection_ratio = rejected_predictions / len(all_targets)
-            results.append((threshold, test_acc, rejection_ratio))
-        
-        return results
-
-    def plot_confidence_thresholding(self, datasets, thresholds=np.arange(0.5, 1, 0.01), use_best_model=False, colors=['orange', 'blue', 'green', 'red', 'black']):
-        """Plots the model's accuracy and rejection ratio at various confidence thresholds.
-
-        Args:
-            datasets (list of tuple): A list of tuples, each containing a dataset name and dataset.
-            thresholds (array-like, optional): The confidence thresholds to test. Defaults to np.arange(0.5, 1, 0.01).
-            use_best_model (bool, optional): Whether to use the best model for testing. Defaults to False.
-            colors (list of str, optional): The colors to use for plotting. Defaults to ['orange', 'blue', 'green', 'red', 'black'].
-        """
-        if use_best_model:
-            model_state_dict = self.best_model_state_dict
-        else:
-            model_state_dict = self.state_dict()
-        # load the state dict into a new instance of the model for testing
-        model = ClassifierModel(self.channel_widths, self.linear_sizes, self.kernel, self.pooling, self.nonlinearity)
-        model.load_state_dict(model_state_dict)
-        model = model.to(self.device)
-
-        plt.figure()
-        for i in range(len(datasets)):
-            dataset = datasets[i]
-            results = np.array(self.test_with_thresholds(model, dataset[1], thresholds))
-            plt.plot(results[:, 0], results[:, 1], color=colors[i], label = dataset[0] + ': Accuracy')
-            plt.plot(results[:, 0], results[:, 2], color=colors[i], linestyle='--', label = dataset[0] + ': Rejection Ratio')
-        plt.legend()
-        ax = plt.gca()
-        ax.set_yticks(np.arange(0, 1, 0.05), minor=True)
-        ax.set_yticks(np.arange(0, 1.1, 0.1), minor=False)
-        ax.grid(True, which='major')
-        ax.grid(True, which='minor', ls='--')
-        plt.ylabel("Accuracy/Rejection Ratios")
-        plt.xlabel("Confidence Threshold")
-        plt.title("Model Accuracy with Confidence Thresholding")
-        plt.show()
-
-    def confidence_histogram(self, dataset):
-        """Plots a histogram of the model's confidence levels for each class on a given dataset.
-
-        Args:
-            dataset (torch.utils.data.Dataset): The dataset to test the model on.
-        """
-        dataloader = torch.utils.data.DataLoader(dataset, batch_size=128)
-        self.eval()
-
-        confidences = [[] for _ in range(self.num_classes)]
-
-        with torch.no_grad():
-            for images, targets in dataloader:
-                class_probs = torch.nn.functional.softmax(self(images), dim=1)
-
-                for i in range(self.num_classes):
-                    confidences[i].extend(class_probs[:, i].tolist())
-
-        # Plot the histogram for each class
-        for i in range(self.num_classes):
-            plt.hist(confidences[i], bins=20, range=(0, 1), alpha=0.7, label='Class {}'.format(i))
-
-        plt.title("Confidence Histogram")
-        plt.xlabel("Confidence Score")
-        plt.ylabel("Frequency")
-        plt.legend()
-        plt.show()
 
     def plot_classification_results(self, dataset, confidence_threshold=0.5):
         """Plots the model's classification results for each class on a given dataset.
@@ -404,7 +308,7 @@ class ClassifierModel(nn.Module):
         x = np.arange(len(labels))  # label locations
         width = 0.2  # width of the bars
 
-        fig, ax = plt.subplots()
+        fig, ax = plt.subplots(figsize=(12, 6))
         
         for i, category in enumerate(categories):
             ax.bar(x + i*width, counts[i], width, label=category)
@@ -416,6 +320,7 @@ class ClassifierModel(nn.Module):
         ax.set_xticklabels(labels)
         ax.legend()
 
+        plt.tight_layout()
         plt.show()
 
     def save_model(self, PATH):

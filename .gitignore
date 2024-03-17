@@ -11,3 +11,5 @@
 !/src/models/
 !/src/models/**/
 !/src/models/**/.gitkeep
+src/utils/__pycache__/ClassifierModel.cpython-310.pyc
+src/utils/__pycache__/REPDataset.cpython-310.pyc
