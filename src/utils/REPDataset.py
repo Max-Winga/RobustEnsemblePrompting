@@ -11,59 +11,56 @@ class REPDataset(Dataset):
     Attributes:
         data (torch.Tensor): The data tensor.
         labels (torch.Tensor): The labels tensor.
-        indices (array-like): The indices array.
+        indices (list): List of all indices.
+        train_indices (list): List of training indices.
+        test_indices (list): List of testing indices.
         class_names (list of str, optional): The class names. Defaults to indices if not provided.
         device (torch.device): The device where the tensors are stored.
-        mode (str): The mode for accessing the dataset, either "train" or "test".
-        train_indices (array-like): The indices for training data.
-        test_indices (array-like): The indices for testing data.
         perturbations (list): A list of perturbation functions which add noise to a single piece of input data.
         multiplicity (int): The multiplicity of the output dimension compared to the input.
         include_original (bool): Whether to include the raw datapoint in the perturbations.
         shuffle (bool): Whether to shuffle the order of the perturbations in the stack.
     """
-    def __init__(self, data, labels, indices, train_indices, test_indices, class_names=None, 
-                 device=None, perturbations=[], include_original=True, shuffle=False):
+    def __init__(self, data, labels, split, perturbations=[], include_original=True, 
+                 shuffle=False, class_names=None, device=None):
         """Initializes the REPDataset.
 
         Args:
             data (array-like): The input data.
             labels (array-like): The labels.
-            indices (array-like): The indices for the data.
-            train_indices (array-like): The indices for training data.
-            test_indices (array-like): The indices for testing data.
-            class_names (list of str, optional): The class names. Defaults to indices if not provided.
-            device (torch.device, optional): The device where the tensors are stored. Defaults to CUDA if available, else CPU.
+            split (float): The ratio of training data to total data.
             perturbations (list): A list of perturbation functions which add noise to a single piece of input data.
             include_original (bool): Whether to include the raw datapoint in the perturbations.
             shuffle (bool): Whether to shuffle the order of the perturbations in the stack.
+            class_names (list of str, optional): The class names. Defaults to indices if not provided.
+            device (torch.device, optional): The device where the tensors are stored. Defaults to CUDA if available, else CPU.
         """
         self.device = device or torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.data = torch.from_numpy(data).to(self.device)
         self.labels = torch.from_numpy(labels).long().to(self.device)
-        self.indices = indices
         self.class_names = class_names or [str(i) for i in range(labels.max() + 1)]
-        self.mode = "train"
         
-        self.train_indices = train_indices
-        self.test_indices = test_indices
-        
+        self.indices = np.arange(len(data))
+        random_seed = 1
+        np.random.seed(random_seed)
+        np.random.shuffle(self.indices)
+
+        train_size = int(len(self.indices) * split)
+        self.train_indices = self.indices[:train_size]
+        self.test_indices = self.indices[train_size:]
+
         self.perturbations = perturbations
         self.include_original = include_original
         self.shuffle = shuffle
         self.multiplicity = len(self.perturbations) + int(self.include_original)
 
-
     def __len__(self):
-        """Returns the number of elements in the current mode (train or test).
+        """Returns the total number of elements in the dataset.
 
         Returns:
-            int: The number of elements.
+            int: The total number of elements.
         """
-        if self.mode == "train":
-            return len(self.train_indices)
-        else:
-            return len(self.test_indices)
+        return len(self.indices)
 
     def __getitem__(self, idx, raw=False):
         """Returns a tuple containing the data and label at a given index.
@@ -75,7 +72,8 @@ class REPDataset(Dataset):
         Returns:
             tuple: A tuple containing the data and label at the given index.
         """
-        raw_data = self.data[idx].unsqueeze(0).float()
+        data_idx = self.indices[idx]
+        raw_data = self.data[data_idx].unsqueeze(0).float()
         layers = [raw_data]
         if not raw:
             for perturbation in self.perturbations:
@@ -87,13 +85,10 @@ class REPDataset(Dataset):
             perturbed_data = torch.stack(layers[1:], dim=0)
 
         if self.shuffle:
-            # Generate a random permutation of indices
             permutation = torch.randperm(perturbed_data.size(0))
-            # Shuffle the stacked tensor along the first dimension
             perturbed_data = perturbed_data[permutation]
 
-        return perturbed_data, self.labels[idx]
-        
+        return perturbed_data, self.labels[data_idx]
     
     def save(self, path):
         """Saves the dataset to a file.
@@ -105,6 +100,8 @@ class REPDataset(Dataset):
             'data': self.data.cpu().numpy(),
             'labels': self.labels.cpu().numpy(),
             'indices': self.indices,
+            'train_indices': self.train_indices,
+            'test_indices': self.test_indices,
             'split': self.split,
             'class_names': self.class_names,
             'perturbations': self.perturbations,
@@ -114,27 +111,21 @@ class REPDataset(Dataset):
     
     @classmethod
     def load(cls, path, device=None):
-        """Loads a dataset from a file.
-
-        Args:
-            path (str): The path where the dataset is saved.
-            device (torch.device, optional): The device where the tensors are stored. If not provided, the dataset is moved to the correct device when created.
-
-        Returns:
-            PSFDataset: The loaded dataset.
-        """
         checkpoint = torch.load(path, map_location='cpu')  # load to CPU
-        return cls(
+        dataset = cls(
             data=checkpoint['data'],
             labels=checkpoint['labels'],
-            indices=checkpoint['indices'],
             split=checkpoint['split'],
-            class_names=checkpoint['class_names'],
-            device=device,  # move to the correct device when creating the dataset
             perturbations=checkpoint['perturbations'],
             include_original=checkpoint['include_original'],
             shuffle=checkpoint['shuffle'],
+            class_names=checkpoint['class_names'],
+            device=device,  # move to the correct device when creating the dataset
         )
+        dataset.indices = checkpoint['indices']
+        dataset.train_indices = checkpoint['train_indices']
+        dataset.test_indices = checkpoint['test_indices']
+        return dataset
     
 def plot_perturbation_layers(dataset, idx):
     """Plots each layer of perturbation for a given instance from the REPDataset.

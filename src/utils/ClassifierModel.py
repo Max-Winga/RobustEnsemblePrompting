@@ -146,35 +146,34 @@ class ClassifierModel(nn.Module):
                 val_acc += (class_logits.data.max(1)[1]).eq(targets).sum().item()
         return val_loss, val_acc
 
-    def train_model(self, all_data, training_indices, validation_indices, config, verbose=True, printouts=20):
+    def train_model(self, dataset, config, verbose=True, printouts=20):
         """Trains the model on given data.
 
         Args:
-            all_data (torch.utils.data.Dataset): The dataset containing all data.
-            training_indices (array-like): The indices for the training data.
-            validation_indices (array-like): The indices for the validation data.
+            dataset (REPDataset): The dataset containing all data.
             config (dict): The configuration for the training process, containing 'lr', 'n_epochs', and 'batch_size'.
             verbose (bool, optional): Whether to print progress during training. Defaults to True.
             printouts (int, optional): The number of times to print progress during training. Defaults to 20.
         """
-        lr = config['lr'] # learning rate
-        n_epochs = config['n_epochs'] # number of passes (epochs) through the training data
+        lr = config['lr']  # learning rate
+        n_epochs = config['n_epochs']  # number of passes (epochs) through the training data
         batch_size = config['batch_size']
-        self.training_parameter_history.append({'Epochs Scheduled': n_epochs, 'Learning Rate': lr, 'Batch Size': batch_size, 'Epochs Completed': 0, 
-                                                'Training Indices': len(training_indices), 'Validation Indices': len(validation_indices), 'Training Time (s)': 0})
-        if printouts > n_epochs: printouts = n_epochs
+        self.training_parameter_history.append({'Epochs Scheduled': n_epochs, 'Learning Rate': lr, 'Batch Size': batch_size, 'Epochs Completed': 0,
+                                                'Training Indices': len(dataset.train_indices), 'Validation Indices': len(dataset.test_indices), 'Training Time (s)': 0})
+        if printouts > n_epochs:
+            printouts = n_epochs
         previous_epochs = self.epochs_trained
 
         # set up optimizer and loss function
         optimizer = torch.optim.SGD(self.parameters(), lr=lr, weight_decay=1e-4)
         criterion = nn.CrossEntropyLoss()
-        
+
         # set up dataloaders
-        train_sampler = torch.utils.data.SubsetRandomSampler(training_indices)
-        val_sampler = torch.utils.data.SubsetRandomSampler(validation_indices)
-        trainloader = torch.utils.data.DataLoader(all_data, batch_size=batch_size, sampler=train_sampler)
-        valloader = torch.utils.data.DataLoader(all_data, batch_size=batch_size, sampler=val_sampler)
-        
+        train_sampler = torch.utils.data.SubsetRandomSampler(dataset.train_indices)
+        val_sampler = torch.utils.data.SubsetRandomSampler(dataset.test_indices)
+        trainloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, sampler=train_sampler)
+        valloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, sampler=val_sampler)
+
         try:
             for n in range(n_epochs):
                 # set model to training mode (unnecessary for this model, but good practice)
@@ -184,31 +183,31 @@ class ClassifierModel(nn.Module):
                 epoch_start = time.time()
                 for images, targets in trainloader:
                     images, targets = images.to(self.device), targets.to(self.device)
-                    optimizer.zero_grad() # zero out gradients
+                    optimizer.zero_grad()  # zero out gradients
                     class_logits = self(images)
                     loss = criterion(class_logits, targets)
-                    loss.backward() # backpropagate to compute gradients
-                    optimizer.step() # update parameters using stochastic gradient descent
+                    loss.backward()  # backpropagate to compute gradients
+                    optimizer.step()  # update parameters using stochastic gradient descent
                     # update epoch statistics
-                    epoch_loss += loss.item() # batch loss
-                    epoch_acc += (class_logits.data.max(1)[1]).eq(targets).sum().item() # number of correct predictions
-                    
+                    epoch_loss += loss.item()  # batch loss
+                    epoch_acc += (class_logits.data.max(1)[1]).eq(targets).sum().item()  # number of correct predictions
+
                 # validation
                 epoch_loss /= len(trainloader)
-                epoch_acc /= len(training_indices)
+                epoch_acc /= len(dataset.train_indices)
                 val_loss, val_acc = self.validate(valloader, criterion)
                 val_loss /= len(valloader)
-                val_acc /= len(validation_indices)
-                
+                val_acc /= len(dataset.test_indices)
+
                 # log epoch information
                 self.record_metrics(epoch_loss, epoch_acc, val_loss, val_acc)
-                
+
                 # save best model's state dict, if necessary
                 if val_acc > self.best_val_accuracy:
                     self.best_val_accuracy = val_acc
                     self.best_model_state_dict = copy.deepcopy(self.state_dict())
-                
-                if verbose and (n+1) % (int(n_epochs/printouts)) == 0:
+
+                if verbose and (n + 1) % (int(n_epochs / printouts)) == 0:
                     print('Epoch {}/{}: (Train) Loss = {:.4e}, Acc = {:.4f}, (Val) Loss = {:.4e}, Acc = {:.4f}'.format(
                         n + 1 + previous_epochs,
                         n_epochs + previous_epochs,
@@ -222,7 +221,7 @@ class ClassifierModel(nn.Module):
                 self.training_time += epoch_time
                 self.training_parameter_history[-1]['Training Time (s)'] += epoch_time
         except KeyboardInterrupt:
-            print("Training interrupted. Stopping after completing {} epochs of {} planned.".format(self.epochs_trained-previous_epochs, n_epochs))
+            print("Training interrupted. Stopping after completing {} epochs of {} planned.".format(self.epochs_trained - previous_epochs, n_epochs))
         return
 
     def plot_model_results(self):
@@ -264,50 +263,7 @@ class ClassifierModel(nn.Module):
         hours = (((self.training_time-seconds) / 60) - minutes) / 60
         print(f"Model trained for: {hours} hrs, {minutes} mins, {seconds} s")
         return self.training_time
-    
-    def generate_convolution_matrix(self, dataset, layer_index):
-        """
-        Generate and plot a convolution matrix for a specified layer of the model.
 
-        Args:
-            dataset (torch.utils.data.Dataset): The dataset to use for generating the convolution matrix.
-            layer_index (int): The index of the convolutional layer to visualize.
-        """
-        self.eval()  # Set the model to evaluation mode
-
-        # Get the specified convolutional layer
-        conv_layer = self.backbone[layer_index]
-
-        # Initialize an empty list to store the convolution outputs
-        conv_outputs = []
-
-        # Iterate over the dataset
-        for images, _ in dataset:
-            images = images.to(self.device)
-
-            # Forward pass until the specified layer
-            with torch.no_grad():
-                for i in range(layer_index + 1):
-                    if i == layer_index:
-                        output = conv_layer(images)
-                        conv_outputs.append(output.cpu().numpy())
-                    else:
-                        images = self.backbone[i](images)
-
-        # Stack the convolution outputs into a single array
-        conv_outputs = np.concatenate(conv_outputs, axis=0)
-
-        # Compute the mean convolution output across the dataset
-        mean_conv_output = np.mean(conv_outputs, axis=0)
-
-        # Plot the convolution matrix
-        plt.figure(figsize=(8, 8))
-        plt.imshow(mean_conv_output[0], cmap='viridis')
-        plt.axis('off')
-        plt.title(f'Convolution Matrix (Layer {layer_index})')
-        plt.colorbar()
-        plt.show()
-        
     def save_model(self, PATH):
         """Saves the model to a file.
 
