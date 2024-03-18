@@ -76,25 +76,23 @@ class REPDataset(Dataset):
             tuple: A tuple containing the data and label at the given index.
         """
         raw_data = self.data[idx].unsqueeze(0).float()
-        if raw:
-            return raw_data, self.labels[idx]
-        else:
-            layers = [raw_data]
+        layers = [raw_data]
+        if not raw:
             for perturbation in self.perturbations:
                 layers.append(perturbation(raw_data))
 
-            if self.include_original:
-                perturbed_data = torch.stack(layers, dim=0)
-            else:
-                perturbed_data = torch.stack(layers[1:], dim=0)
+        if self.include_original or raw:
+            perturbed_data = torch.stack(layers, dim=0)
+        else:
+            perturbed_data = torch.stack(layers[1:], dim=0)
 
-            if self.shuffle:
-                # Generate a random permutation of indices
-                permutation = torch.randperm(perturbed_data.size(0))
-                # Shuffle the stacked tensor along the first dimension
-                perturbed_data = perturbed_data[permutation]
+        if self.shuffle:
+            # Generate a random permutation of indices
+            permutation = torch.randperm(perturbed_data.size(0))
+            # Shuffle the stacked tensor along the first dimension
+            perturbed_data = perturbed_data[permutation]
 
-            return perturbed_data, self.labels[idx]
+        return perturbed_data, self.labels[idx]
         
     
     def save(self, path):
