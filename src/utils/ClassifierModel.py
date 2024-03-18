@@ -264,65 +264,50 @@ class ClassifierModel(nn.Module):
         hours = (((self.training_time-seconds) / 60) - minutes) / 60
         print(f"Model trained for: {hours} hrs, {minutes} mins, {seconds} s")
         return self.training_time
-
-    def plot_classification_results(self, dataset, confidence_threshold=0.5):
-        """Plots the model's classification results for each class on a given dataset.
-        Shows correct/incorrect/rejected for each class at the given confidence threshold.
+    
+    def generate_convolution_matrix(self, dataset, layer_index):
+        """
+        Generate and plot a convolution matrix for a specified layer of the model.
 
         Args:
-            dataset (torch.utils.data.Dataset): The dataset to test the model on.
-            confidence_threshold (float, optional): The confidence threshold to use. Defaults to 0.5.
+            dataset (torch.utils.data.Dataset): The dataset to use for generating the convolution matrix.
+            layer_index (int): The index of the convolutional layer to visualize.
         """
-        dataloader = torch.utils.data.DataLoader(dataset, batch_size=128)
-        self.eval()
+        self.eval()  # Set the model to evaluation mode
 
-        class_counts = {i: {'correct': 0, 'incorrect': 0, 'rejected': 0} for i in range(self.num_classes)}
+        # Get the specified convolutional layer
+        conv_layer = self.backbone[layer_index]
 
-        with torch.no_grad():
-            for images, targets in dataloader:
-                images, targets = images.to(self.device), targets.to(self.device)
-                outputs = self(images)
-                _, predicted = torch.max(outputs.data, 1)
-                softmax_outputs = torch.nn.functional.softmax(outputs, dim=1)
+        # Initialize an empty list to store the convolution outputs
+        conv_outputs = []
 
-                for label in range(self.num_classes):
-                    is_label = targets == label
+        # Iterate over the dataset
+        for images, _ in dataset:
+            images = images.to(self.device)
 
-                    confident_indices = softmax_outputs.max(1).values > confidence_threshold
+            # Forward pass until the specified layer
+            with torch.no_grad():
+                for i in range(layer_index + 1):
+                    if i == layer_index:
+                        output = conv_layer(images)
+                        conv_outputs.append(output.cpu().numpy())
+                    else:
+                        images = self.backbone[i](images)
 
-                    correct_indices = predicted[is_label & confident_indices] == label
-                    incorrect_indices = predicted[is_label & confident_indices] != label
-                    rejected_indices = ~confident_indices & is_label
-                    
-                    class_counts[label]['correct'] += correct_indices.sum().item()
-                    class_counts[label]['incorrect'] += incorrect_indices.sum().item()
-                    class_counts[label]['rejected'] += rejected_indices.sum().item()
+        # Stack the convolution outputs into a single array
+        conv_outputs = np.concatenate(conv_outputs, axis=0)
 
-        labels = ['Class {}'.format(i) for i in range(self.num_classes)]
-        categories = ['correct', 'incorrect', 'rejected']
+        # Compute the mean convolution output across the dataset
+        mean_conv_output = np.mean(conv_outputs, axis=0)
 
-        counts = [[class_counts[label][category] for category in categories] for label in range(self.num_classes)]
-
-        counts = np.array(counts).T  # transpose so each row is a category
-        
-        x = np.arange(len(labels))  # label locations
-        width = 0.2  # width of the bars
-
-        fig, ax = plt.subplots(figsize=(12, 6))
-        
-        for i, category in enumerate(categories):
-            ax.bar(x + i*width, counts[i], width, label=category)
-        
-        ax.set_xlabel('Classes')
-        ax.set_ylabel('Counts')
-        ax.set_title(f'Classification Results with Confidence Threshold: {confidence_threshold}')
-        ax.set_xticks(x + width)
-        ax.set_xticklabels(labels)
-        ax.legend()
-
-        plt.tight_layout()
+        # Plot the convolution matrix
+        plt.figure(figsize=(8, 8))
+        plt.imshow(mean_conv_output[0], cmap='viridis')
+        plt.axis('off')
+        plt.title(f'Convolution Matrix (Layer {layer_index})')
+        plt.colorbar()
         plt.show()
-
+        
     def save_model(self, PATH):
         """Saves the model to a file.
 

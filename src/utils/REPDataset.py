@@ -64,7 +64,7 @@ class REPDataset(Dataset):
             return len(self.train_indices)
         else:
             return len(self.test_indices)
-        
+
     def __getitem__(self, idx, raw=False):
         """Returns a tuple containing the data and label at a given index.
 
