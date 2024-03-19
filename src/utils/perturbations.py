@@ -50,3 +50,17 @@ def lpips_perturbation(net='vgg', std=1.0):
         return perturbed_data.squeeze(1)
     
     return perturbation
+
+def create_perturbations(descriptions):
+    perturbations = []
+    for description in descriptions:
+        match description[0]:
+            case "Gaussian":
+                perturbations.append(gaussian_noise_perturbation(description[1]))
+            case "Laplacian":
+                perturbations.append(laplacian_noise_perturbation(description[1]))
+            case "Lp-norm":
+                perturbations.append(lp_norm_perturbation(description[1], description[2]))
+            case "lpips":
+                perturbations.append(lpips_perturbation(description[1]))
+    return perturbations
