@@ -88,7 +88,7 @@ class REPClassifier(nn.Module):
         self.epochs_trained = 0
         self.training_parameter_history = []
         self.training_time = 0
-        
+
     def forward(self, x):
         """Performs a forward pass through the model.
 
@@ -166,7 +166,7 @@ class REPClassifier(nn.Module):
         """Trains the model on given data.
 
         Args:
-            dataset (REPDataset): The dataset containing all data.
+            dataset (StandardDataset): The dataset containing all data.
             config (dict): The configuration for the training process, containing 'lr', 'n_epochs', and 'batch_size'.
             verbose (bool, optional): Whether to print progress during training. Defaults to True.
             printouts (int, optional): The number of times to print progress during training. Defaults to 20.

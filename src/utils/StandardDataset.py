@@ -29,7 +29,7 @@ class StandardDataset(Dataset):
         self.device = device or torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.data = torch.from_numpy(data).to(self.device)
         self.labels = torch.from_numpy(labels).long().to(self.device)
-        self.class_names = class_names or [str(i) for i in range(labels.max() + 1)]
+        self.class_names = class_names or [str(i) for i in range(int(labels.max() + 1))]
         
         self.indices = np.arange(len(data))
         random_seed = 1

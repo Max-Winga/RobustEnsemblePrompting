@@ -13,3 +13,6 @@
 !/src/models/**/.gitkeep
 src/utils/__pycache__/ClassifierModel.cpython-310.pyc
 src/utils/__pycache__/REPDataset.cpython-310.pyc
+notebooks/examples/data/cifar-100-python/file.txt~
+notebooks/examples/data/cifar-100-python/meta
+notebooks/examples/data/cifar-100-python/test

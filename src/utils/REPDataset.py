@@ -150,7 +150,8 @@ def plot_perturbation_layers(dataset, idx):
     
     # Plot each layer of perturbation
     for i in range(num_layers):
-        layer_data = perturbed_data[i].squeeze().cpu().numpy()
+        layer_data = perturbed_data[i].squeeze().permute(1, 2, 0).cpu().numpy()
+        layer_data = (layer_data - layer_data.min()) / (layer_data.max() - layer_data.min())
         axes[i].imshow(layer_data, cmap='gray')
         axes[i].set_title(f"Layer {i+1}")
         axes[i].axis('off')

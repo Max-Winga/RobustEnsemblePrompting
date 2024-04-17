@@ -1,0 +1,56 @@
+Training model with perturbations:
+[]
+Epoch 10/100 Complete After 51s! Train Acc: 0.18134, Test Acc: 0.1778
+Epoch 20/100 Complete After 103s! Train Acc: 0.23314, Test Acc: 0.2196
+Epoch 30/100 Complete After 156s! Train Acc: 0.27264, Test Acc: 0.2563
+Epoch 40/100 Complete After 208s! Train Acc: 0.30192, Test Acc: 0.2769
+Epoch 50/100 Complete After 261s! Train Acc: 0.34018, Test Acc: 0.308
+Epoch 60/100 Complete After 313s! Train Acc: 0.35898, Test Acc: 0.3271
+Epoch 70/100 Complete After 366s! Train Acc: 0.37796, Test Acc: 0.3385
+Epoch 80/100 Complete After 419s! Train Acc: 0.39852, Test Acc: 0.3548
+Epoch 90/100 Complete After 471s! Train Acc: 0.4157, Test Acc: 0.3646
+Epoch 100/100 Complete After 524s! Train Acc: 0.42554, Test Acc: 0.3732
+Accuracy on benign test examples: 37.32%
+Accuracy on adversarial test examples (epsilon = 0.0.025): 9.48%
+Accuracy on adversarial test examples (epsilon = 0.05): 6.1899999999999995%
+Accuracy on adversarial test examples (epsilon = 0.075): 4.390000000000001%
+Accuracy on adversarial test examples (epsilon = 0.1): 3.3099999999999996%
+Training model with perturbations:
+[['Gaussian', 0.025]]
+Epoch 10/100 Complete After 53s! Train Acc: 0.1835, Test Acc: 0.1743
+Epoch 20/100 Complete After 107s! Train Acc: 0.23202, Test Acc: 0.2237
+Epoch 30/100 Complete After 161s! Train Acc: 0.27378, Test Acc: 0.2556
+Epoch 40/100 Complete After 215s! Train Acc: 0.29224, Test Acc: 0.2764
+Epoch 50/100 Complete After 268s! Train Acc: 0.32232, Test Acc: 0.3009
+Epoch 60/100 Complete After 322s! Train Acc: 0.3466, Test Acc: 0.3171
+Epoch 70/100 Complete After 376s! Train Acc: 0.3729, Test Acc: 0.3397
+Epoch 80/100 Complete After 430s! Train Acc: 0.38632, Test Acc: 0.3509
+Epoch 90/100 Complete After 484s! Train Acc: 0.39958, Test Acc: 0.3633
+Epoch 100/100 Complete After 538s! Train Acc: 0.41154, Test Acc: 0.3586
+Accuracy on benign test examples: 36.17%
+Accuracy on adversarial test examples (epsilon = 0.0.025): 11.219999999999999%
+Accuracy on adversarial test examples (epsilon = 0.05): 6.7%
+Accuracy on adversarial test examples (epsilon = 0.075): 4.67%
+Accuracy on adversarial test examples (epsilon = 0.1): 3.36%
+Training model with perturbations:
+[['Gaussian', 0.05]]
+Epoch 10/100 Complete After 53s! Train Acc: 0.17762, Test Acc: 0.1748
+Epoch 20/100 Complete After 107s! Train Acc: 0.23162, Test Acc: 0.2201
+Epoch 30/100 Complete After 161s! Train Acc: 0.2581, Test Acc: 0.2409
+Epoch 40/100 Complete After 215s! Train Acc: 0.2894, Test Acc: 0.2663
+Epoch 50/100 Complete After 270s! Train Acc: 0.32102, Test Acc: 0.2912
+Epoch 60/100 Complete After 324s! Train Acc: 0.341, Test Acc: 0.3104
+Epoch 70/100 Complete After 378s! Train Acc: 0.36078, Test Acc: 0.3252
+Epoch 80/100 Complete After 432s! Train Acc: 0.37468, Test Acc: 0.337
+Epoch 90/100 Complete After 487s! Train Acc: 0.39398, Test Acc: 0.3503
+Epoch 100/100 Complete After 540s! Train Acc: 0.3982, Test Acc: 0.3539
+Accuracy on benign test examples: 35.339999999999996%
+Accuracy on adversarial test examples (epsilon = 0.0.025): 13.83%
+Accuracy on adversarial test examples (epsilon = 0.05): 8.260000000000002%
+Accuracy on adversarial test examples (epsilon = 0.075): 5.46%
+Accuracy on adversarial test examples (epsilon = 0.1): 3.92%
+Training model with perturbations:
+[[['Gaussian', 0.05], ['ContrastBrightness', 0.3, 0.3]]]
+
+
+***CRASH***

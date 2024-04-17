@@ -1,0 +1,285 @@
+MODEL PARAMETERS:
+# Step 2: Create the REPClassifier model for testing with no perturbations
+channel_widths = [3, 50, 100, 50]  
+linear_sizes = [50, 100]
+kernel = 3
+pooling = nn.AdaptiveMaxPool2d((2, 2))
+
+perturbation_description = []
+
+perturbations = create_perturbations(perturbation_description)
+include_original = True
+shuffle = True
+
+model = REPClassifier(
+    channel_widths=channel_widths,
+    linear_sizes=linear_sizes,
+    kernel=kernel,
+    pooling=pooling,
+    perturbations=perturbations,
+    include_original=include_original,
+    shuffle=shuffle,
+    num_classes=100,
+)
+# Step 2a: Define the loss function and the optimizer
+lr = 0.0001
+criterion = nn.CrossEntropyLoss()
+optimizer = optim.Adam(model.parameters(), lr=lr)
+
+# Step 3: Create the ART classifier
+classifier = PyTorchClassifier(
+    model=model,
+    clip_values=(min_pixel_value, max_pixel_value),
+    loss=criterion,
+    optimizer=optimizer,
+    input_shape=(3, 28, 28),
+    nb_classes=100,
+)
+
+# Step 4: Train the ART classifier
+batch_size = 64
+super_epochs = 10
+epochs_per = 5
+for epoch in range(super_epochs):
+    classifier.fit(x_train, y_train, batch_size=batch_size, nb_epochs=epochs_per, verbose=False)
+    train_predictions = classifier.predict(x_train)
+    train_accuracy = np.sum(np.argmax(train_predictions, axis=1) == np.argmax(y_train, axis=1)) / len(y_train)
+    test_predictions = classifier.predict(x_test)
+    test_accuracy = np.sum(np.argmax(test_predictions, axis=1) == np.argmax(y_test, axis=1)) / len(y_test)
+    print(f"Epoch {(epoch+1)*epochs_per}/{super_epochs*epochs_per} Complete! Train Acc: {train_accuracy}, Test Acc: {test_accuracy}")
+
+
+STANDARD BASELINE:
+Epoch 5/50 Complete! Train Acc: 0.13194, Test Acc: 0.1309
+Epoch 10/50 Complete! Train Acc: 0.18138, Test Acc: 0.1764
+Epoch 15/50 Complete! Train Acc: 0.20782, Test Acc: 0.1989
+Epoch 20/50 Complete! Train Acc: 0.23204, Test Acc: 0.2253
+Epoch 25/50 Complete! Train Acc: 0.25606, Test Acc: 0.245
+Epoch 30/50 Complete! Train Acc: 0.26944, Test Acc: 0.2532
+Epoch 35/50 Complete! Train Acc: 0.28556, Test Acc: 0.2689
+Epoch 40/50 Complete! Train Acc: 0.30706, Test Acc: 0.2911
+Epoch 45/50 Complete! Train Acc: 0.31694, Test Acc: 0.2961
+Epoch 50/50 Complete! Train Acc: 0.33524, Test Acc: 0.3082
+Accuracy on benign test examples: 30.819999999999997%
+Accuracy on adversarial test examples (epsilon = 0.1): 3.38%
+Accuracy on adversarial test examples (epsilon = 0.2): 1.63%
+Accuracy on adversarial test examples (epsilon = 0.3): 1.3299999999999998%
+Accuracy on adversarial test examples (epsilon = 0.5): 0.83%
+
+PERTURBATION RESULTS:
+Training model with perturbations:
+[['Gaussian', 0.1]]
+Epoch 10/50 Complete After 62s! Train Acc: 0.18348, Test Acc: 0.182
+Epoch 20/50 Complete After 126s! Train Acc: 0.22854, Test Acc: 0.2194
+Epoch 30/50 Complete After 188s! Train Acc: 0.2616, Test Acc: 0.2499
+Epoch 40/50 Complete After 252s! Train Acc: 0.29568, Test Acc: 0.2739
+Epoch 50/50 Complete After 315s! Train Acc: 0.3195, Test Acc: 0.2968
+Accuracy on benign test examples: 29.69%
+Accuracy on adversarial test examples (epsilon = 0.1): 4.91%
+Accuracy on adversarial test examples (epsilon = 0.2): 2.16%
+Accuracy on adversarial test examples (epsilon = 0.3): 1.25%
+Accuracy on adversarial test examples (epsilon = 0.5): 0.88%
+Training model with perturbations:
+[['Gaussian', 0.2]]
+Epoch 10/50 Complete After 63s! Train Acc: 0.164, Test Acc: 0.1629
+Epoch 20/50 Complete After 127s! Train Acc: 0.2009, Test Acc: 0.191
+Epoch 30/50 Complete After 191s! Train Acc: 0.22712, Test Acc: 0.2171
+Epoch 40/50 Complete After 255s! Train Acc: 0.25486, Test Acc: 0.2405
+Epoch 50/50 Complete After 320s! Train Acc: 0.28098, Test Acc: 0.2602
+Accuracy on benign test examples: 26.38%
+Accuracy on adversarial test examples (epsilon = 0.1): 7.870000000000001%
+Accuracy on adversarial test examples (epsilon = 0.2): 3.1199999999999997%
+Accuracy on adversarial test examples (epsilon = 0.3): 1.92%
+Accuracy on adversarial test examples (epsilon = 0.5): 1.3299999999999998%
+Training model with perturbations:
+[['Laplacian', 0.1]]
+Epoch 10/50 Complete After 86s! Train Acc: 0.16614, Test Acc: 0.1594
+Epoch 20/50 Complete After 172s! Train Acc: 0.20544, Test Acc: 0.2
+Epoch 30/50 Complete After 261s! Train Acc: 0.24094, Test Acc: 0.2316
+Epoch 40/50 Complete After 349s! Train Acc: 0.26924, Test Acc: 0.2517
+Epoch 50/50 Complete After 436s! Train Acc: 0.29066, Test Acc: 0.2734
+Accuracy on benign test examples: 26.82%
+Accuracy on adversarial test examples (epsilon = 0.1): 5.83%
+Accuracy on adversarial test examples (epsilon = 0.2): 2.65%
+Accuracy on adversarial test examples (epsilon = 0.3): 1.71%
+Accuracy on adversarial test examples (epsilon = 0.5): 1.0699999999999998%
+Training model with perturbations:
+[['Laplacian', 0.2]]
+Epoch 10/50 Complete After 87s! Train Acc: 0.14452, Test Acc: 0.1408
+Epoch 20/50 Complete After 175s! Train Acc: 0.17958, Test Acc: 0.1733
+Epoch 30/50 Complete After 263s! Train Acc: 0.20516, Test Acc: 0.1953
+Epoch 40/50 Complete After 351s! Train Acc: 0.22264, Test Acc: 0.2088
+Epoch 50/50 Complete After 439s! Train Acc: 0.23914, Test Acc: 0.2249
+Accuracy on benign test examples: 22.54%
+Accuracy on adversarial test examples (epsilon = 0.1): 9.06%
+Accuracy on adversarial test examples (epsilon = 0.2): 3.7600000000000002%
+Accuracy on adversarial test examples (epsilon = 0.3): 2.2800000000000002%
+Accuracy on adversarial test examples (epsilon = 0.5): 1.27%
+Training model with perturbations:
+[['Lp-norm', 1, 1]]
+Epoch 10/50 Complete After 66s! Train Acc: 0.17256, Test Acc: 0.1652
+Epoch 20/50 Complete After 131s! Train Acc: 0.23644, Test Acc: 0.2234
+Epoch 30/50 Complete After 197s! Train Acc: 0.28234, Test Acc: 0.2635
+Epoch 40/50 Complete After 263s! Train Acc: 0.32504, Test Acc: 0.2983
+Epoch 50/50 Complete After 329s! Train Acc: 0.34852, Test Acc: 0.317
+Accuracy on benign test examples: 31.7%
+Accuracy on adversarial test examples (epsilon = 0.1): 3.44%
+Accuracy on adversarial test examples (epsilon = 0.2): 1.67%
+Accuracy on adversarial test examples (epsilon = 0.3): 1.27%
+Accuracy on adversarial test examples (epsilon = 0.5): 0.7000000000000001%
+Training model with perturbations:
+[['Lp-norm', 1, 2]]
+Epoch 10/50 Complete After 65s! Train Acc: 0.18614, Test Acc: 0.1866
+Epoch 20/50 Complete After 132s! Train Acc: 0.24272, Test Acc: 0.2331
+Epoch 30/50 Complete After 198s! Train Acc: 0.28788, Test Acc: 0.2727
+Epoch 40/50 Complete After 264s! Train Acc: 0.31864, Test Acc: 0.2946
+Epoch 50/50 Complete After 330s! Train Acc: 0.34698, Test Acc: 0.3239
+Accuracy on benign test examples: 32.34%
+Accuracy on adversarial test examples (epsilon = 0.1): 3.32%
+Accuracy on adversarial test examples (epsilon = 0.2): 1.79%
+Accuracy on adversarial test examples (epsilon = 0.3): 1.29%
+Accuracy on adversarial test examples (epsilon = 0.5): 0.9299999999999999%
+Training model with perturbations:
+[['Lp-norm', 1, 3]]
+Epoch 10/50 Complete After 66s! Train Acc: 0.18668, Test Acc: 0.1804
+Epoch 20/50 Complete After 132s! Train Acc: 0.23348, Test Acc: 0.2227
+Epoch 30/50 Complete After 199s! Train Acc: 0.27424, Test Acc: 0.258
+Epoch 40/50 Complete After 266s! Train Acc: 0.3038, Test Acc: 0.2864
+Epoch 50/50 Complete After 334s! Train Acc: 0.33506, Test Acc: 0.3045
+Accuracy on benign test examples: 30.570000000000004%
+Accuracy on adversarial test examples (epsilon = 0.1): 3.55%
+Accuracy on adversarial test examples (epsilon = 0.2): 1.63%
+Accuracy on adversarial test examples (epsilon = 0.3): 1.08%
+Accuracy on adversarial test examples (epsilon = 0.5): 0.8099999999999999%
+Training model with perturbations:
+[['Lp-norm', 1, 4]]
+Epoch 10/50 Complete After 67s! Train Acc: 0.17914, Test Acc: 0.1729
+Epoch 20/50 Complete After 137s! Train Acc: 0.2325, Test Acc: 0.2242
+Epoch 30/50 Complete After 206s! Train Acc: 0.27158, Test Acc: 0.2589
+Epoch 40/50 Complete After 272s! Train Acc: 0.30896, Test Acc: 0.2905
+Epoch 50/50 Complete After 341s! Train Acc: 0.32914, Test Acc: 0.3055
+Accuracy on benign test examples: 30.759999999999998%
+Accuracy on adversarial test examples (epsilon = 0.1): 3.88%
+Accuracy on adversarial test examples (epsilon = 0.2): 1.8399999999999999%
+Accuracy on adversarial test examples (epsilon = 0.3): 1.18%
+Accuracy on adversarial test examples (epsilon = 0.5): 0.8099999999999999%
+Training model with perturbations:
+[['Lp-norm', 1, 5]]
+Epoch 10/50 Complete After 71s! Train Acc: 0.16756, Test Acc: 0.165
+Epoch 20/50 Complete After 144s! Train Acc: 0.21642, Test Acc: 0.206
+Epoch 30/50 Complete After 215s! Train Acc: 0.25404, Test Acc: 0.2406
+Epoch 40/50 Complete After 287s! Train Acc: 0.28798, Test Acc: 0.2721
+Epoch 50/50 Complete After 358s! Train Acc: 0.31896, Test Acc: 0.2979
+Accuracy on benign test examples: 29.59%
+Accuracy on adversarial test examples (epsilon = 0.1): 4.130000000000001%
+Accuracy on adversarial test examples (epsilon = 0.2): 1.6400000000000001%
+Accuracy on adversarial test examples (epsilon = 0.3): 1.17%
+Accuracy on adversarial test examples (epsilon = 0.5): 0.76%
+Training model with perturbations:
+[['Lp-norm', 1, inf]]
+Epoch 10/50 Complete After 71s! Train Acc: 0.1559, Test Acc: 0.1531
+Epoch 20/50 Complete After 142s! Train Acc: 0.19492, Test Acc: 0.1875
+Epoch 30/50 Complete After 214s! Train Acc: 0.22228, Test Acc: 0.2113
+Epoch 40/50 Complete After 285s! Train Acc: 0.24186, Test Acc: 0.2309
+Epoch 50/50 Complete After 357s! Train Acc: 0.26092, Test Acc: 0.2448
+Accuracy on benign test examples: 24.48%
+Accuracy on adversarial test examples (epsilon = 0.1): 8.790000000000001%
+Accuracy on adversarial test examples (epsilon = 0.2): 3.6900000000000004%
+Accuracy on adversarial test examples (epsilon = 0.3): 2.26%
+Accuracy on adversarial test examples (epsilon = 0.5): 1.34%
+Training model with perturbations:
+[['Gaussian', 0.1], ['Laplacian', 0.1]]
+Epoch 10/50 Complete After 153s! Train Acc: 0.1799, Test Acc: 0.1783
+Epoch 20/50 Complete After 309s! Train Acc: 0.2248, Test Acc: 0.2164
+Epoch 30/50 Complete After 464s! Train Acc: 0.25612, Test Acc: 0.2411
+Epoch 40/50 Complete After 621s! Train Acc: 0.29298, Test Acc: 0.2797
+Epoch 50/50 Complete After 777s! Train Acc: 0.32004, Test Acc: 0.2999
+Accuracy on benign test examples: 29.82%
+Accuracy on adversarial test examples (epsilon = 0.1): 4.93%
+Accuracy on adversarial test examples (epsilon = 0.2): 1.9300000000000002%
+Accuracy on adversarial test examples (epsilon = 0.3): 1.4000000000000001%
+Accuracy on adversarial test examples (epsilon = 0.5): 0.91%
+Training model with perturbations:
+[['Gaussian', 0.2], ['Laplacian', 0.2]]
+Epoch 10/50 Complete After 156s! Train Acc: 0.1589, Test Acc: 0.1566
+Epoch 20/50 Complete After 312s! Train Acc: 0.20382, Test Acc: 0.1982
+Epoch 30/50 Complete After 469s! Train Acc: 0.23828, Test Acc: 0.2321
+Epoch 40/50 Complete After 626s! Train Acc: 0.2619, Test Acc: 0.2464
+Epoch 50/50 Complete After 783s! Train Acc: 0.28098, Test Acc: 0.2611
+Accuracy on benign test examples: 26.36%
+Accuracy on adversarial test examples (epsilon = 0.1): 6.74%
+Accuracy on adversarial test examples (epsilon = 0.2): 2.63%
+Accuracy on adversarial test examples (epsilon = 0.3): 1.49%
+Accuracy on adversarial test examples (epsilon = 0.5): 1.05%
+Training model with perturbations:
+[['Lp-norm', 1, 1], ['Lp-norm', 1, 2], ['Lp-norm', 1, 3], ['Lp-norm', 1, 4], ['Lp-norm', 1, 5], ['Lp-norm', 1, inf]]
+Epoch 10/50 Complete After 366s! Train Acc: 0.196, Test Acc: 0.1839
+Epoch 20/50 Complete After 731s! Train Acc: 0.26248, Test Acc: 0.2472
+Epoch 30/50 Complete After 1097s! Train Acc: 0.31558, Test Acc: 0.2948
+Epoch 40/50 Complete After 1463s! Train Acc: 0.33978, Test Acc: 0.318
+Epoch 50/50 Complete After 1825s! Train Acc: 0.3601, Test Acc: 0.3328
+Accuracy on benign test examples: 33.269999999999996%
+Accuracy on adversarial test examples (epsilon = 0.1): 3.11%
+Accuracy on adversarial test examples (epsilon = 0.2): 1.4000000000000001%
+Accuracy on adversarial test examples (epsilon = 0.3): 0.9299999999999999%
+Accuracy on adversarial test examples (epsilon = 0.5): 0.6799999999999999%
+Training model with perturbations:
+[['Gaussian', 0.1], ['Laplacian', 0.1], ['Lp-norm', 1, 2]]
+Epoch 10/50 Complete After 207s! Train Acc: 0.17774, Test Acc: 0.1712
+Epoch 20/50 Complete After 415s! Train Acc: 0.22948, Test Acc: 0.2172
+Epoch 30/50 Complete After 624s! Train Acc: 0.27466, Test Acc: 0.2664
+Epoch 40/50 Complete After 833s! Train Acc: 0.31862, Test Acc: 0.3046
+Epoch 50/50 Complete After 1042s! Train Acc: 0.3427, Test Acc: 0.3149
+Accuracy on benign test examples: 31.7%
+Accuracy on adversarial test examples (epsilon = 0.1): 4.34%
+Accuracy on adversarial test examples (epsilon = 0.2): 1.96%
+Accuracy on adversarial test examples (epsilon = 0.3): 1.38%
+Accuracy on adversarial test examples (epsilon = 0.5): 1.04%
+Training model with perturbations:
+[['Gaussian', 0.2], ['Laplacian', 0.2], ['Lp-norm', 1, 2]]
+Epoch 10/50 Complete After 208s! Train Acc: 0.159, Test Acc: 0.1547
+Epoch 20/50 Complete After 417s! Train Acc: 0.21326, Test Acc: 0.2084
+Epoch 30/50 Complete After 627s! Train Acc: 0.25132, Test Acc: 0.2381
+Epoch 40/50 Complete After 836s! Train Acc: 0.27742, Test Acc: 0.2543
+Epoch 50/50 Complete After 1044s! Train Acc: 0.30174, Test Acc: 0.277
+Accuracy on benign test examples: 27.99%
+Accuracy on adversarial test examples (epsilon = 0.1): 5.36%
+Accuracy on adversarial test examples (epsilon = 0.2): 2.46%
+Accuracy on adversarial test examples (epsilon = 0.3): 1.6400000000000001%
+Accuracy on adversarial test examples (epsilon = 0.5): 0.9299999999999999%
+Training model with perturbations:
+[['Gaussian', 0.1], ['Laplacian', 0.1], ['Lp-norm', 1, 4]]
+Epoch 10/50 Complete After 208s! Train Acc: 0.1781, Test Acc: 0.1722
+Epoch 20/50 Complete After 418s! Train Acc: 0.22776, Test Acc: 0.2161
+Epoch 30/50 Complete After 626s! Train Acc: 0.26878, Test Acc: 0.253
+Epoch 40/50 Complete After 834s! Train Acc: 0.30276, Test Acc: 0.2865
+Epoch 50/50 Complete After 1044s! Train Acc: 0.33586, Test Acc: 0.3139
+Accuracy on benign test examples: 31.430000000000003%
+Accuracy on adversarial test examples (epsilon = 0.1): 4.01%
+Accuracy on adversarial test examples (epsilon = 0.2): 1.73%
+Accuracy on adversarial test examples (epsilon = 0.3): 1.21%
+Accuracy on adversarial test examples (epsilon = 0.5): 0.67%
+Training model with perturbations:
+[['Gaussian', 0.2], ['Laplacian', 0.2], ['Lp-norm', 1, 4]]
+Epoch 10/50 Complete After 207s! Train Acc: 0.1905, Test Acc: 0.1872
+Epoch 20/50 Complete After 415s! Train Acc: 0.23384, Test Acc: 0.2233
+Epoch 30/50 Complete After 624s! Train Acc: 0.2713, Test Acc: 0.2575
+Epoch 40/50 Complete After 832s! Train Acc: 0.30098, Test Acc: 0.2792
+Epoch 50/50 Complete After 1039s! Train Acc: 0.32586, Test Acc: 0.3019
+Accuracy on benign test examples: 30.130000000000003%
+Accuracy on adversarial test examples (epsilon = 0.1): 4.87%
+Accuracy on adversarial test examples (epsilon = 0.2): 1.96%
+Accuracy on adversarial test examples (epsilon = 0.3): 1.21%
+Accuracy on adversarial test examples (epsilon = 0.5): 0.73%
+Training model with perturbations:
+[['Gaussian', 0.1], ['Laplacian', 0.1], ['Gaussian', 0.2], ['Laplacian', 0.2], ['Lp-norm', 1, 1], ['Lp-norm', 1, 2], ['Lp-norm', 1, 3], ['Lp-norm', 1, 4], ['Lp-norm', 1, 5], ['Lp-norm', 1, inf]]
+Epoch 10/50 Complete After 694s! Train Acc: 0.1887, Test Acc: 0.1853
+Epoch 20/50 Complete After 1321s! Train Acc: 0.23994, Test Acc: 0.2294
+Epoch 30/50 Complete After 1894s! Train Acc: 0.28056, Test Acc: 0.271
+Epoch 40/50 Complete After 2467s! Train Acc: 0.30534, Test Acc: 0.2865
+Epoch 50/50 Complete After 3040s! Train Acc: 0.3375, Test Acc: 0.3102
+Accuracy on benign test examples: 31.019999999999996%
+Accuracy on adversarial test examples (epsilon = 0.1): 3.47%
+Accuracy on adversarial test examples (epsilon = 0.2): 1.55%
+Accuracy on adversarial test examples (epsilon = 0.3): 1.11%
+Accuracy on adversarial test examples (epsilon = 0.5): 0.8%
