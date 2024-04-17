@@ -16,3 +16,5 @@ src/utils/__pycache__/REPDataset.cpython-310.pyc
 notebooks/examples/data/cifar-100-python/file.txt~
 notebooks/examples/data/cifar-100-python/meta
 notebooks/examples/data/cifar-100-python/test
+notebooks/examples/data/cifar-100-python.tar.gz
+notebooks/examples/data/cifar-100-python/train
