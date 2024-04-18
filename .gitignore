@@ -18,3 +18,12 @@ notebooks/examples/data/cifar-100-python/meta
 notebooks/examples/data/cifar-100-python/test
 notebooks/examples/data/cifar-100-python.tar.gz
 notebooks/examples/data/cifar-100-python/train
+notebooks/examples/data/cifar-10-python.tar.gz
+notebooks/examples/data/cifar-10-batches-py/batches.meta
+notebooks/examples/data/cifar-10-batches-py/data_batch_1
+notebooks/examples/data/cifar-10-batches-py/data_batch_2
+notebooks/examples/data/cifar-10-batches-py/data_batch_3
+notebooks/examples/data/cifar-10-batches-py/data_batch_4
+notebooks/examples/data/cifar-10-batches-py/data_batch_5
+notebooks/examples/data/cifar-10-batches-py/readme.html
+notebooks/examples/data/cifar-10-batches-py/test_batch
