@@ -88,7 +88,7 @@ class REPDataset(Dataset):
             permutation = torch.randperm(perturbed_data.size(0))
             perturbed_data = perturbed_data[permutation]
 
-        return perturbed_data, self.labels[data_idx]
+        return perturbed_data.to(self.device), self.labels[data_idx].to(self.device)
     
     def save(self, path):
         """Saves the dataset to a file.

@@ -73,9 +73,9 @@ class REPClassifier(nn.Module):
             fc_layers.append(nn.Linear(in_features, size))
             fc_layers.append(nonlinearity)
             in_features = size
-        self.fully_connected = nn.Sequential(*fc_layers)
+        self.fully_connected = nn.Sequential(*fc_layers).to(self.device)
 
-        self.linear = nn.Linear(in_features, num_classes)  # score each class to obtain logits
+        self.linear = nn.Linear(in_features, num_classes).to(self.device)  # score each class to obtain logits
         self.to(self.device)
         
         # Initialize lists to store performance metrics

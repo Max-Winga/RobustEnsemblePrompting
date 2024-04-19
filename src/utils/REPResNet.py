@@ -34,6 +34,7 @@ class BasicBlock(nn.Module):
         base_width: int = 64,
         dilation: int = 1,
         norm_layer: Optional[Callable[..., nn.Module]] = None,
+        device: torch.device = None,  # Add device as an argument
     ) -> None:
         super().__init__()
         if norm_layer is None:
@@ -43,11 +44,11 @@ class BasicBlock(nn.Module):
         if dilation > 1:
             raise NotImplementedError("Dilation > 1 not supported in BasicBlock")
         # Both self.conv1 and self.downsample layers downsample the input when stride != 1
-        self.conv1 = conv3x3(inplanes, planes, stride)
-        self.bn1 = norm_layer(planes)
-        self.relu = nn.ReLU(inplace=True)
-        self.conv2 = conv3x3(planes, planes)
-        self.bn2 = norm_layer(planes)
+        self.conv1 = conv3x3(inplanes, planes, stride).to(device)
+        self.bn1 = norm_layer(planes).to(device)
+        self.relu = nn.ReLU(inplace=True).to(device)
+        self.conv2 = conv3x3(planes, planes).to(device)
+        self.bn2 = norm_layer(planes).to(device)
         self.downsample = downsample
         self.stride = stride
 
@@ -88,19 +89,20 @@ class Bottleneck(nn.Module):
         base_width: int = 64,
         dilation: int = 1,
         norm_layer: Optional[Callable[..., nn.Module]] = None,
+        device: torch.device = None,  # Add device as an argument
     ) -> None:
         super().__init__()
         if norm_layer is None:
             norm_layer = nn.BatchNorm2d
         width = int(planes * (base_width / 64.0)) * groups
         # Both self.conv2 and self.downsample layers downsample the input when stride != 1
-        self.conv1 = conv1x1(inplanes, width)
-        self.bn1 = norm_layer(width)
-        self.conv2 = conv3x3(width, width, stride, groups, dilation)
-        self.bn2 = norm_layer(width)
-        self.conv3 = conv1x1(width, planes * self.expansion)
-        self.bn3 = norm_layer(planes * self.expansion)
-        self.relu = nn.ReLU(inplace=True)
+        self.conv1 = conv1x1(inplanes, width).to(device)
+        self.bn1 = norm_layer(width).to(device)
+        self.conv2 = conv3x3(width, width, stride, groups, dilation).to(device)
+        self.bn2 = norm_layer(width).to(device)
+        self.conv3 = conv1x1(width, planes * self.expansion).to(device)
+        self.bn3 = norm_layer(planes * self.expansion).to(device)
+        self.relu = nn.ReLU(inplace=True).to(device)
         self.downsample = downsample
         self.stride = stride
 
@@ -125,18 +127,22 @@ class Bottleneck(nn.Module):
         out = self.relu(out)
 
         return out
+    
 class REPResNet(nn.Module):
     def __init__(
         self,
         block: Type[Union[BasicBlock, Bottleneck]],
         layers: List[int],
+        perturbations: List,
+        include_original: bool,
+        shuffle: bool,
         num_classes: int = 1000,
         zero_init_residual: bool = False,
-        multiplicity: int = 1, ################################# ONLY CHANGE FOR REP #############################################
         groups: int = 1,
         width_per_group: int = 64,
         replace_stride_with_dilation: Optional[List[bool]] = None,
         norm_layer: Optional[Callable[..., nn.Module]] = None,
+        device: torch.device = None,
     ) -> None:
         super().__init__()
         # _log_api_usage_once(self)
@@ -155,18 +161,27 @@ class REPResNet(nn.Module):
                 "replace_stride_with_dilation should be None "
                 f"or a 3-element tuple, got {replace_stride_with_dilation}"
             )
+        
+        self.perturbations = perturbations
+        self.include_original = include_original
+        self.shuffle = shuffle
+        self.multiplicity = len(perturbations) + int(include_original)
+        self.device = device
+
         self.groups = groups
         self.base_width = width_per_group
-        self.conv1 = nn.Conv2d(3 * multiplicity, self.inplanes, kernel_size=7, stride=2, padding=3, bias=False) ############# CHANGE APPLIES HERE ##############
-        self.bn1 = norm_layer(self.inplanes)
-        self.relu = nn.ReLU(inplace=True)
-        self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
+        # self.conv1 = nn.Conv2d(3 * self.multiplicity, self.inplanes, kernel_size=7, stride=2, padding=3, bias=False).to(device)
+        self.conv1 = nn.Conv2d(3 * self.multiplicity, self.inplanes, kernel_size=5, stride=1, padding=2, bias=False).to(device)
+        self.bn1 = norm_layer(self.inplanes).to(device)
+        self.relu = nn.ReLU(inplace=True).to(device)
+        # self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1).to(device)
+        self.maxpool = nn.Identity()
         self.layer1 = self._make_layer(block, 64, layers[0])
         self.layer2 = self._make_layer(block, 128, layers[1], stride=2, dilate=replace_stride_with_dilation[0])
         self.layer3 = self._make_layer(block, 256, layers[2], stride=2, dilate=replace_stride_with_dilation[1])
         self.layer4 = self._make_layer(block, 512, layers[3], stride=2, dilate=replace_stride_with_dilation[2])
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
-        self.fc = nn.Linear(512 * block.expansion, num_classes)
+        self.fc = nn.Linear(512 * block.expansion, num_classes).to(device)
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -203,13 +218,21 @@ class REPResNet(nn.Module):
             downsample = nn.Sequential(
                 conv1x1(self.inplanes, planes * block.expansion, stride),
                 norm_layer(planes * block.expansion),
-            )
+            ).to(self.device)  # Move downsample layers to device
 
         layers = []
         layers.append(
             block(
-                self.inplanes, planes, stride, downsample, self.groups, self.base_width, previous_dilation, norm_layer
-            )
+                self.inplanes,
+                planes,
+                stride,
+                downsample,
+                self.groups,
+                self.base_width,
+                previous_dilation,
+                norm_layer,
+                self.device,  # Pass the device to the block
+            ).to(self.device)  # Move the block to the device
         )
         self.inplanes = planes * block.expansion
         for _ in range(1, blocks):
@@ -221,13 +244,32 @@ class REPResNet(nn.Module):
                     base_width=self.base_width,
                     dilation=self.dilation,
                     norm_layer=norm_layer,
-                )
+                    device=self.device,  # Pass the device to the block
+                ).to(self.device)  # Move the block to the device
             )
 
         return nn.Sequential(*layers)
 
     def _forward_impl(self, x: Tensor) -> Tensor:
         # See note [TorchScript super()]
+
+        # First apply perturbations
+        B, C, H, W = x.shape  # batch size
+
+        # Apply perturbations to the input
+        layers = [x]
+        if not self.include_original:
+            layers = []
+        for perturbation in self.perturbations:
+            layers.append(perturbation(x))
+        
+        if self.shuffle:
+            permutation = torch.randperm(len(layers))
+            layers = [layers[i] for i in permutation]
+        
+        perturbed_x = torch.stack(layers, dim=1)
+        x = perturbed_x.view(B, C * self.multiplicity, H, W)
+
         x = self.conv1(x)
         x = self.bn1(x)
         x = self.relu(x)
