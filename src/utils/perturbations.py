@@ -128,5 +128,10 @@ def create_single_perturbation(description):
             return salt_pepper_noise_perturbation(description[1])
         case "lpips":
             return lpips_perturbation(description[1])
+        case "Identity":
+            def identity(x):
+                return x
+            return identity
         case _:
+            print(f"Recieved Improper Perturbation Input: {description}")
             return None
