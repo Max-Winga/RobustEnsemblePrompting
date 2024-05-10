@@ -127,7 +127,7 @@ class REPDataset(Dataset):
         dataset.test_indices = checkpoint['test_indices']
         return dataset
     
-def plot_perturbation_layers(dataset, idx):
+def plot_perturbation_layers(dataset, perturbations, idx):
     """Plots each layer of perturbation for a given instance from the REPDataset.
 
     Args:
@@ -153,7 +153,7 @@ def plot_perturbation_layers(dataset, idx):
         layer_data = perturbed_data[i].squeeze().permute(1, 2, 0).cpu().numpy()
         layer_data = (layer_data - layer_data.min()) / (layer_data.max() - layer_data.min())
         axes[i].imshow(layer_data, cmap='gray')
-        axes[i].set_title(f"Layer {i+1}")
+        axes[i].set_title(f"{perturbations[i]}")
         axes[i].axis('off')
     
     # Remove any unused subplots
